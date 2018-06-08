@@ -1,0 +1,6 @@
+  go get -u github.com/cloudflare/cfssl/cmd/cfssljson
+  go get -u github.com/cloudflare/cfssl/cmd/cfssl
+  go get -u github.com/cloudflare/cfssl/cmd/cfssl-bundle
+  go get -u github.com/cloudflare/cfssl/cmd/cfssl-certinfo
+  go get -u github.com/cloudflare/cfssl/cmd/cfssl-newkey
+  go get -u github.com/cloudflare/cfssl/cmd/cfssl-scan

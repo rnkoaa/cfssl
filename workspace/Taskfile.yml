@@ -1,0 +1,178 @@
+version: '2'
+
+tasks:
+  main:
+    cmds:
+      - task: structure
+      - task: ca-csr
+      - task: intermediate-ca-csr
+      - task: ca-config
+      - task: intermediate-ca-config
+      - task: ca
+      - task: intermediate-ca
+
+  structure:
+    cmds:
+      - mkdir -p ca/root ca/intermediate
+      - mkdir -p config/
+      - mkdir -p certs/consul/servers
+      - mkdir -p certs/consul/clients
+      - mkdir -p certs/nomad/servers
+      - mkdir -p certs/nomad/clients
+      - mkdir -p certs/vault/servers
+      - mkdir -p certs/vault/clients
+  reset:
+    cmds:
+      - rm -rf ca config certs
+
+  ca:
+    desc: Generate root CA
+    dir: ca/root
+    cmds:
+      - cfssl genkey -initca ca-csr.json |cfssljson -bare ca
+  
+  intermediate-ca:
+    desc: Generate intermediate CA
+    # dir: ca/intermediate
+    cmds:
+      - |
+        cfssl gencert -ca=ca/root/ca.pem \
+        -ca-key=ca/root/ca-key.pem \
+        -config=config/intermediate-ca-config.json \
+        ca/intermediate/intermediate-ca-csr.json | \
+        cfssljson -bare ca/intermediate/intermediate-ca
+  ca-csr:
+    desc: Generate the CA CSR
+    dir: ca/root
+    silent: true
+    cmds:
+      - 
+        |
+        cat << EOF > ca-csr.json
+        {
+          "CN": "RNKOAA Root CA",
+          "key": {
+            "algo": "ecdsa",
+            "size": 256
+          },
+          "ca": {
+            "expiry": "262800h"
+          },
+          "names": [
+            {
+              "C": "US",
+              "L": "Minneapolis",
+              "OU": "RNKOAA DevOps",
+              "ST": "MN"
+            }
+          ]
+        }
+        EOF
+
+  intermediate-ca-csr:
+    desc: Generate the CA CSR
+    dir: ca/intermediate
+    silent: true
+    cmds:
+      - 
+        |
+        cat << EOF > intermediate-ca-csr.json
+        {
+          "CN": "RNKOAA Intermediate CA",
+          "key": {
+            "algo": "ecdsa",
+            "size": 256
+          },
+          "hosts": [
+            ""
+          ],
+          "names": [
+            {
+              "C": "US",
+              "L": "Minneapolis",
+              "OU": "RNKOAA DevOps",
+              "ST": "MN"
+            }
+          ]
+        }
+        EOF
+
+  intermediate-ca-config:
+    desc: Generate Intermediate CA Config file
+    silent: true
+    cmds:
+      - |
+        cat << EOF > config/intermediate-ca-config.json
+        {
+          "signing": {
+            "default": {
+              "expiry": "43800h",
+              "ca_constraint": {
+                "is_ca": true,
+                "max_path_len": 0,
+                "max_path_len_zero": true
+              },
+              "usages": [
+                "digital signature",
+                "cert sign",
+                "crl sign",
+                "signing"
+              ]
+            }
+          }
+        }
+        EOF
+
+  ca-config:
+    desc: Generate CA Config file
+    silent: true
+    cmds:
+      - |
+        cat << EOF > config/ca-config.json
+        {
+          "signing": {
+            "default": {
+              "expiry": "8760h"
+            },
+            "profiles": {
+              "server": {
+                "expiry": "26280h",
+                "usages": [
+                  "signing",
+                  "key encipherment",
+                  "server auth"
+                ]
+              },
+              "client": {
+                "expiry": "26280h",
+                "usages": [
+                  "signing",
+                  "key encipherment",
+                  "client auth"
+                ]
+              },
+              "client-server": {
+                "expiry": "26280h",
+                "usages": [
+                  "signing",
+                  "key encipherment",
+                  "server auth",
+                  "client auth"
+                ]
+              }
+            }
+          }
+        }
+        EOF
+
+  consul-servers:
+    cmds:
+      - |
+        cfssl gencert \
+        -ca=ca/intermediate/intermediate-ca.pem \
+        -ca-key=ca/intermediate/intermediate-ca-key.pem \
+        -config=config/ca-config.json \
+        -profile=server certs/consul/servers/server-csr.json | \
+        cfssljson -bare certs/consul/servers/vagrant-consul-server
+  
+# cfssl gencert -ca=ca/intermediate/intermediate-ca.pem -ca-key=ca/intermediate/intermediate-ca-key.pem -config=config/ca-config.json -profile=server certs/consul/servers/server-csr.json | cfssljson -bare certs/consul/servers/vagrant-consul-server

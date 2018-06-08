@@ -1,0 +1,55 @@
+https://propellered.com/2017/11/13/cfssl_setting_up/
+https://gist.github.com/jdeathe/7f7bb957a4e8e0304f0df070f3cbcbee
+
+/home/vagrant/workspace/ca/root
+cd workspace/ca/root
+
+ openssl x509 -in ../server/vagrant-hashi-stack-consul.pem -text -noout
+
+cfssl print-defaults csr > ca-csr.json
+
+cd ../../config
+cfssl print-defaults config > ca-config.json
+
+/home/vagrant/workspace/ca/root
+cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+
+# Generate intermediate cert
+/home/vagrant/workspace/ca/intermediate
+cfssl gencert -ca=../root/ca.pem \
+-ca-key=../root/ca-key.pem \
+-config=../../config/ca-config.json \
+-profile=intermediate intermediate-ca-csr.json \
+|cfssljson -bare intermediate-ca
+
+# Sign intermediate certificate with root certificate
+	cfssl sign \
+		-ca ${CA_ROOT_CERT_KEY}.pem \
+		-ca-key ${CA_ROOT_CERT_KEY}-key.pem \
+		-config ca-root-to-intermediate-config.json \
+		${CA_INTERMEDIATE_CERT_KEY}.csr \
+	| cfssljson -bare ${CA_INTERMEDIATE_CERT_KEY}
+
+
+# Generate chain ca (root + intermediate)
+/home/vagrant/workspace/ca
+mkdir chain
+cat root/ca.pem intermediate/intermediate-ca.pem > chain/chain-ca.pem
+
+
+# Generate consul servers certs
+/home/vagrant/workspace/certs/consul/server
+cfssl gencert -ca=../../../ca/intermediate/intermediate-ca.pem \
+-ca-key=../../../ca/intermediate/intermediate-ca-key.pem \
+-config=../../../config/ca-config.json -profile=server consul-server-csr.json |cfssljson -bare vagrant-hashi-stack-consul
+
+# verify consul servers certs
+/home/vagrant/workspace/certs/consul/server
+
+# Generate consul clients certs
+
+
+json format file.
+cat csr_ROOT_CA.json | jq . > temp.json; cat temp.json > csr_ROOT_CA.json; rm temp.json
+
+cfssl bundle -cert myserver.pem -ca-bundle ca.pem | cfssljson -bare myserver
