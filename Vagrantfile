@@ -19,8 +19,10 @@ Vagrant.configure('2') do |config|
         echo "==> Shell Provisioning"
 
         sudo apt-get update -y && sudo apt-get upgrade -y \
-          && sudo apt-get -y install vim wget git zip unzip tree curl build-essentials golang-1.10-go git
-
+          && sudo apt-get -y install vim wget git zip unzip tree curl build-essential git zsh
+        
+        wget https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
+      
         file="/home/vagrant/.vimrc"
         if [ -f "$file" ]
         then
@@ -30,16 +32,19 @@ Vagrant.configure('2') do |config|
           # curl -s -L -o /home/vagrant/.vimrc https://raw.githubusercontent.com/amix/vimrc/master/vimrcs/basic.vim
         fi
 
-        mkdir /home/vagrant/go
+        mkdir /home/vagrant/work
         mkdir downloads && cd downloads && wget -q https://dl.google.com/go/go1.10.2.linux-amd64.tar.gz
         tar -xvf go1.10.2.linux-amd64.tar.gz && sudo mv go /usr/local
-#        echo 'export GOROOT=/usr/local/go' | tee -a /home/vagrant/.zsh_profile
-#        echo 'export GOROOT=/home/vagrant/go' | tee -a /home/vagrant/.zsh_profile
-#       echo 'export PATH=$GOROOT/bin:$PATH' | tee -a /home/vagrant/.zsh_profile
-
+        
         # setup zsh for easy access
-        echoe 'export PATH=$PATH:/usr/local/go/bin' >> /home/vagrant/.bashrc
+        echo 'export PATH=$PATH:/usr/local/go/bin' >> /home/vagrant/.zsh_profile
+        echo 'export PATH=$PATH:/home/vagrant/go/bin' >> /home/vagrant/.zsh_profile
+        echo 'source /home/vagrant/.zsh_profile' >> /home/vagrant/.zshrc
 
+        sudo chown vagrant:vagrant /home/vagrant/.zsh_profile
+
+        # change the default shell to be zsh
+        sudo chsh -s /bin/zsh vagrant
     SHELL
   end
 end

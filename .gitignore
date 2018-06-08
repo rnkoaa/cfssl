@@ -1,3 +1,5 @@
 workspace/ca
 workspace/certs
 workspace/config
+.vagrant/
+
