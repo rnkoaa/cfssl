@@ -12,9 +12,7 @@ Vagrant.configure('2') do |config|
     machine.vm.hostname = "#{name}.alpha.consul"
     machine.vm.network 'private_network', ip: "192.168.33.10"
     machine.vm.synced_folder "workspace/", "/home/vagrant/workspace"
-    # else
-    # do nothing for now
-    # end
+    
     machine.vm.provision 'shell', inline: <<-SHELL
         echo "==> Shell Provisioning"
 

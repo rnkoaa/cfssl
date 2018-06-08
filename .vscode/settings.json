@@ -1,0 +1,14 @@
+{
+    "cSpell.words": [
+        "certinfo",
+        "cfssl",
+        "cfssljson",
+        "cloudflare",
+        "gencert",
+        "hashi",
+        "initca",
+        "mkdir",
+        "newkey",
+        "noout"
+    ]
+}

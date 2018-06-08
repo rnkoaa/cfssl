@@ -21,6 +21,7 @@ tasks:
       - mkdir -p certs/nomad/clients
       - mkdir -p certs/vault/servers
       - mkdir -p certs/vault/clients
+
   reset:
     cmds:
       - rm -rf ca config certs
@@ -57,6 +58,7 @@ tasks:
         -config=config/intermediate-ca-config.json \
         ca/intermediate/intermediate-ca-csr.json | \
         cfssljson -bare ca/intermediate/intermediate-ca
+  
   ca-csr:
     desc: Generate the CA CSR
     dir: ca/root
@@ -181,11 +183,12 @@ tasks:
         }
         EOF
 
-  consul-servers-csr:
+  alpha-consul-servers-csr:
     silent: true
     cmds:
+      - mkdir -p certs/alpha-consul/servers
       - |
-        cat << EOF > certs/consul/servers/server-csr.json
+        cat << EOF > certs/alpha-consul/servers/server-csr.json
         {
           "CN": "alpha.consul",
           "hosts": [
@@ -293,6 +296,48 @@ tasks:
         }
         EOF
 
+  vault-cli-client-csr:
+    silent: true
+    cmds:
+      - mkdir -p certs/vault/clients/cli
+      - |
+        cat << EOF > certs/vault/clients/cli/cli-csr.json
+        {
+          "CN": "vault-cli-client",
+          "key": {
+              "algo": "ecdsa",
+              "size": 256
+          },
+          "names": [{
+              "C": "US",
+              "L": "Minneapolis",
+              "OU": "RNKOAA DevOps",
+              "ST": "MN"
+          }]
+        }
+        EOF
+
+  vault-app-client-csr:
+    silent: true
+    cmds:
+      - mkdir -p certs/vault/clients/app
+      - |
+        cat << EOF > certs/vault/clients/app/app-csr.json
+        {
+          "CN": "vault-app-client",
+          "key": {
+              "algo": "ecdsa",
+              "size": 256
+          },
+          "names": [{
+              "C": "US",
+              "L": "Minneapolis",
+              "OU": "RNKOAA DevOps",
+              "ST": "MN"
+          }]
+        }
+        EOF
+
   consul-servers:
     cmds:
       - |
@@ -300,8 +345,18 @@ tasks:
         -ca=ca/intermediate/intermediate-ca.pem \
         -ca-key=ca/intermediate/intermediate-ca-key.pem \
         -config=config/ca-config.json \
-        -profile=server certs/consul/servers/server-csr.json | \
+        -profile=server certs/alpha-consul/servers/server-csr.json | \
         cfssljson -bare certs/consul/servers/vagrant-consul-server
+  
+  vault-servers:
+    cmds:
+      - |
+        cfssl gencert \
+        -ca=ca/intermediate/intermediate-ca.pem \
+        -ca-key=ca/intermediate/intermediate-ca-key.pem \
+        -config=config/ca-config.json \
+        -profile=server certs/alpha-consul/servers/server-csr.json | \
+        cfssljson -bare certs/vault/servers/vagrant-vault-server
   
   consul-cli-cert:
     cmds:
@@ -312,6 +367,26 @@ tasks:
         -config=config/ca-config.json \
         -profile=client certs/consul/clients/cli/cli-csr.json | \
         cfssljson -bare certs/consul/clients/cli/vagrant-consul-cli-client
+  
+  vault-cli-cert:
+    cmds:
+      - |
+        cfssl gencert \
+        -ca=ca/intermediate/intermediate-ca.pem \
+        -ca-key=ca/intermediate/intermediate-ca-key.pem \
+        -config=config/ca-config.json \
+        -profile=client certs/vault/clients/cli/cli-csr.json | \
+        cfssljson -bare certs/vault/clients/cli/vagrant-vault-cli-client
+        
+  vault-app-cert:
+    cmds:
+      - |
+        cfssl gencert \
+        -ca=ca/intermediate/intermediate-ca.pem \
+        -ca-key=ca/intermediate/intermediate-ca-key.pem \
+        -config=config/ca-config.json \
+        -profile=client certs/vault/clients/app/app-csr.json | \
+        cfssljson -bare certs/vault/clients/app/vagrant-vault-app-client
   
   consul-nomad-cert:
     cmds:
