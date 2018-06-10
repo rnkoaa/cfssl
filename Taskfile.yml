@@ -1,0 +1,9 @@
+version: '2'
+
+tasks:
+  docker-container:
+    desc: |
+      Run the docker container that can be used to generate certs. This mounts the local workspace dir as a volume
+      
+    cmds:
+      - docker run --rm -it -v $PWD/workspace/:/workspace rnkoaa/cfssl
