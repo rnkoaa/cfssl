@@ -377,7 +377,7 @@ tasks:
         -config=config/ca-config.json \
         -profile=client certs/vault/clients/cli/cli-csr.json | \
         cfssljson -bare certs/vault/clients/cli/vagrant-vault-cli-client
-        
+
   vault-app-cert:
     cmds:
       - |
@@ -418,3 +418,94 @@ tasks:
         -profile=client certs/consul/clients/consul/consul-csr.json | \
         cfssljson -bare certs/consul/clients/consul/vagrant-consul-client
   
+# Generate Nomad Certs
+# 1. generate nomad servers csr
+  nomad-servers-csr:
+    silent: true
+    cmds:
+      - mkdir -p certs/nomad/servers/
+      - |
+        cat << EOF > certs/nomad/servers/global-nomad-csr.json
+        {
+          "CN": "global.nomad",
+          "hosts": [
+              "global.nomad",
+              "alpha.consul",
+              "vagrant-hashi-stack-1.global.nomad",
+              "vagrant-hashi-stack-2.global.nomad",
+              "vagrant-hashi-stack-3.global.nomad",
+              "vagrant-hashi-stack-1.alpha.consul",
+              "vagrant-hashi-stack-2.alpha.consul",
+              "vagrant-hashi-stack-3.alpha.consul",
+              "localhost",
+              "127.0.0.1"
+          ],
+          "key": {
+              "algo": "ecdsa",
+              "size": 256
+          },
+          "names": [{
+              "C": "US",
+              "L": "Minneapolis",
+              "OU": "RNKOAA DevOps",
+              "ST": "MN"
+          }]
+        }
+        EOF
+# 2. Generate Nomad servers certs
+  nomad-servers:
+    cmds:
+      - |
+        cfssl gencert \
+        -ca=ca/intermediate/intermediate-ca.pem \
+        -ca-key=ca/intermediate/intermediate-ca-key.pem \
+        -config=config/ca-config.json \
+        -profile=server certs/nomad/servers/global-nomad-csr.json | \
+        cfssljson -bare certs/nomad/servers/vagrant-nomad-server
+  
+# 3. Generate Nomad clients csr
+  nomad-clients-csr:
+    silent: true
+    cmds:
+      - mkdir -p certs/nomad/clients/
+      - |
+        cat << EOF > certs/nomad/clients/nomad-client-csr.json
+        {
+          "CN": "global.nomad",
+          "hosts": [
+              "global.nomad",
+              "alpha.consul",
+              "vagrant-hashi-stack-1.global.nomad",
+              "vagrant-hashi-stack-2.global.nomad",
+              "vagrant-hashi-stack-3.global.nomad",
+              "vagrant-hashi-stack-1.alpha.consul",
+              "vagrant-hashi-stack-2.alpha.consul",
+              "vagrant-hashi-stack-3.alpha.consul",
+              "localhost",
+              "127.0.0.1"
+          ],
+          "key": {
+              "algo": "ecdsa",
+              "size": 256
+          },
+          "names": [{
+              "C": "US",
+              "L": "Minneapolis",
+              "OU": "RNKOAA DevOps",
+              "ST": "MN"
+          }]
+        }
+        EOF
+# 4. Use client csr to generate certs
+  nomad-client-certs:
+    silent: true
+    cmds:
+      - mkdir -p certs/nomad/clients/nomad
+      - |
+        cfssl gencert \
+        -ca=ca/intermediate/intermediate-ca.pem \
+        -ca-key=ca/intermediate/intermediate-ca-key.pem \
+        -config=config/ca-config.json \
+        -profile=client-server certs/nomad/clients/nomad-client-csr.json | \
+        cfssljson -bare certs/nomad/clients/nomad/vagrant-nomad-client
+# 5. validate server and client certs
