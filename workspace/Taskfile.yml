@@ -1,16 +1,8 @@
 version: '2'
 
 tasks:
-  main:
-    cmds:
-      - task: structure
-      - task: ca-csr
-      - task: intermediate-ca-csr
-      - task: ca-config
-      - task: intermediate-ca-config
-      - task: ca
-      - task: intermediate-ca
 
+## Task Groups
   structure:
     cmds:
       - mkdir -p ca/root ca/intermediate
@@ -21,10 +13,43 @@ tasks:
       - mkdir -p certs/nomad/clients
       - mkdir -p certs/vault/servers
       - mkdir -p certs/vault/clients
+  
+  gen-all-ca:
+    cmds:
+      - task: structure
+      - task: ca-csr
+      - task: intermediate-ca-csr
+      - task: ca-config
+      - task: intermediate-ca-config
+      - task: ca
+      - task: intermediate-ca
+
+  gen-all-consul:
+    cmds:
+      - task: alpha-consul-servers-csr
+      - task: consul-servers
+      - task: consul-client-csrs
+      - task: consul-clients-certs
+
+  gen-all-nomad:
+    cmds:
+      - task: nomad-servers-csr
+      - task: nomad-clients-csr
+      - task: nomad-client-certs
+      - task: nomad-servers-certs
+
+  gen-all-vault:
+    cmds:
+      - task: vault-servers-certs
+      - task: vault-cli-client-csr
+      - task: vault-app-client-csr
+      - task: vault-cli-cert
+      - task: vault-app-client-cert
 
   reset:
     cmds:
       - rm -rf ca config certs
+      # - task: main
 
   consul-client-csrs:
     silent: true
@@ -42,11 +67,11 @@ tasks:
       - task: consul-cli-cert
       - task: consul-client-cert
 
+# Individual Tasks
   ca:
     desc: Generate root CA
-    dir: ca/root
     cmds:
-      - cfssl genkey -initca ca-csr.json |cfssljson -bare ca
+      - cfssl genkey -initca ca/root/ca-csr.json | cfssljson -bare ca/root/ca
   
   intermediate-ca:
     desc: Generate intermediate CA
@@ -61,282 +86,57 @@ tasks:
   
   ca-csr:
     desc: Generate the CA CSR
-    dir: ca/root
     silent: true
     cmds:
-      - 
-        |
-        cat << EOF > ca-csr.json
-        {
-          "CN": "RNKOAA Root CA",
-          "key": {
-            "algo": "ecdsa",
-            "size": 256
-          },
-          "ca": {
-            "expiry": "262800h"
-          },
-          "names": [
-            {
-              "C": "US",
-              "L": "Minneapolis",
-              "OU": "RNKOAA DevOps",
-              "ST": "MN"
-            }
-          ]
-        }
-        EOF
+      - echo {{.ROOT_CA_CSR_JSON | catLines}} > ca/root/ca-csr.json
 
   intermediate-ca-csr:
     desc: Generate the CA CSR
-    dir: ca/intermediate
     silent: true
     cmds:
-      - 
-        |
-        cat << EOF > intermediate-ca-csr.json
-        {
-          "CN": "RNKOAA Intermediate CA",
-          "key": {
-            "algo": "ecdsa",
-            "size": 256
-          },
-          "hosts": [
-            ""
-          ],
-          "names": [
-            {
-              "C": "US",
-              "L": "Minneapolis",
-              "OU": "RNKOAA DevOps",
-              "ST": "MN"
-            }
-          ]
-        }
-        EOF
+      - echo {{.INTERMEDIATE_CA_CSR_JSON | catLines}} > ca/intermediate/intermediate-ca-csr.json
 
   intermediate-ca-config:
     desc: Generate Intermediate CA Config file
     silent: true
     cmds:
-      - |
-        cat << EOF > config/intermediate-ca-config.json
-        {
-          "signing": {
-            "default": {
-              "expiry": "43800h",
-              "ca_constraint": {
-                "is_ca": true,
-                "max_path_len": 0,
-                "max_path_len_zero": true
-              },
-              "usages": [
-                "digital signature",
-                "cert sign",
-                "crl sign",
-                "signing"
-              ]
-            }
-          }
-        }
-        EOF
-
+      -  echo {{.INTERMEDIATE_CA_CONFIG_JSON | catLines}} > config/intermediate-ca-config.json
+        
   ca-config:
     desc: Generate CA Config file
     silent: true
     cmds:
-      - |
-        cat << EOF > config/ca-config.json
-        {
-          "signing": {
-            "default": {
-              "expiry": "8760h"
-            },
-            "profiles": {
-              "server": {
-                "expiry": "26280h",
-                "usages": [
-                  "signing",
-                  "key encipherment",
-                  "server auth"
-                ]
-              },
-              "client": {
-                "expiry": "26280h",
-                "usages": [
-                  "signing",
-                  "key encipherment",
-                  "client auth"
-                ]
-              },
-              "client-server": {
-                "expiry": "26280h",
-                "usages": [
-                  "signing",
-                  "key encipherment",
-                  "server auth",
-                  "client auth"
-                ]
-              }
-            }
-          }
-        }
-        EOF
+      - echo {{.CA_CONFIG_JSON | catLines}} > config/ca-config.json
 
   alpha-consul-servers-csr:
     silent: true
     cmds:
       - mkdir -p certs/alpha-consul/servers
-      - |
-        cat << EOF > certs/alpha-consul/servers/server-csr.json
-        {
-          "CN": "alpha.consul",
-          "hosts": [
-              "alpha.consul",
-              "vagrant-hashi-stack-1.alpha.consul",
-              "vagrant-hashi-stack-2.alpha.consul",
-              "vagrant-hashi-stack-3.alpha.consul",
-              "localhost",
-              "127.0.0.1"
-          ],
-          "key": {
-              "algo": "ecdsa",
-              "size": 256
-          },
-          "names": [{
-              "C": "US",
-              "L": "Minneapolis",
-              "OU": "RNKOAA DevOps",
-              "ST": "MN"
-          }]
-        }
-        EOF
+      - echo {{.ALPHA_CONSUL_SERVERS_CSR | catLines }} > certs/alpha-consul/servers/server-csr.json
 
   consul-vault-client-csr:
     silent: true
     cmds:
       - mkdir -p certs/consul/clients/vault
-      - |
-        cat << EOF > certs/consul/clients/vault/vault-csr.json
-        {
-          "CN": "consul-vault-client",
-          "key": {
-              "algo": "ecdsa",
-              "size": 256
-          },
-          "names": [{
-              "C": "US",
-              "L": "Minneapolis",
-              "OU": "RNKOAA DevOps",
-              "ST": "MN"
-          }]
-        }
-        EOF
+      - echo {{.CONSUL_VAULT_CLIENT_CSR_JSON | catLines}} > certs/consul/clients/vault/vault-csr.json
 
   consul-client-csr:
     silent: true
     cmds:
       - mkdir -p certs/consul/clients/consul
-      - |
-        cat << EOF > certs/consul/clients/consul/consul-csr.json
-        {
-          "CN": "consul-client",
-          "key": {
-              "algo": "ecdsa",
-              "size": 256
-          },
-          "names": [{
-              "C": "US",
-              "L": "Minneapolis",
-              "OU": "RNKOAA DevOps",
-              "ST": "MN"
-          }]
-        }
-        EOF
+      - echo {{.CONSUL_CLIENT_CSR_JSON | catLines}} > certs/consul/clients/consul/consul-csr.json
 
   consul-nomad-client-csr:
     silent: true
     cmds:
       - mkdir -p certs/consul/clients/nomad
-      - |
-        cat << EOF > certs/consul/clients/nomad/nomad-csr.json
-        {
-          "CN": "consul-nomad-client",
-          "key": {
-              "algo": "ecdsa",
-              "size": 256
-          },
-          "names": [{
-              "C": "US",
-              "L": "Minneapolis",
-              "OU": "RNKOAA DevOps",
-              "ST": "MN"
-          }]
-        }
-        EOF
+      - echo {{.CONSUL_NOMAD_CLIENT_CSR_JSON | catLines}} > certs/consul/clients/nomad/nomad-csr.json
 
   consul-cli-client-csr:
     silent: true
     cmds:
       - mkdir -p certs/consul/clients/cli
-      - |
-        cat << EOF > certs/consul/clients/cli/cli-csr.json
-        {
-          "CN": "consul-cli-client",
-          "key": {
-              "algo": "ecdsa",
-              "size": 256
-          },
-          "names": [{
-              "C": "US",
-              "L": "Minneapolis",
-              "OU": "RNKOAA DevOps",
-              "ST": "MN"
-          }]
-        }
-        EOF
-
-  vault-cli-client-csr:
-    silent: true
-    cmds:
-      - mkdir -p certs/vault/clients/cli
-      - |
-        cat << EOF > certs/vault/clients/cli/cli-csr.json
-        {
-          "CN": "vault-cli-client",
-          "key": {
-              "algo": "ecdsa",
-              "size": 256
-          },
-          "names": [{
-              "C": "US",
-              "L": "Minneapolis",
-              "OU": "RNKOAA DevOps",
-              "ST": "MN"
-          }]
-        }
-        EOF
-
-  vault-app-client-csr:
-    silent: true
-    cmds:
-      - mkdir -p certs/vault/clients/app
-      - |
-        cat << EOF > certs/vault/clients/app/app-csr.json
-        {
-          "CN": "vault-app-client",
-          "key": {
-              "algo": "ecdsa",
-              "size": 256
-          },
-          "names": [{
-              "C": "US",
-              "L": "Minneapolis",
-              "OU": "RNKOAA DevOps",
-              "ST": "MN"
-          }]
-        }
-        EOF
+      - echo {{.CONSUL_CLI_CLIENT_CSR_JSON | catLines }} > certs/consul/clients/cli/cli-csr.json
 
   consul-servers:
     cmds:
@@ -348,16 +148,6 @@ tasks:
         -profile=server certs/alpha-consul/servers/server-csr.json | \
         cfssljson -bare certs/consul/servers/vagrant-consul-server
   
-  vault-servers:
-    cmds:
-      - |
-        cfssl gencert \
-        -ca=ca/intermediate/intermediate-ca.pem \
-        -ca-key=ca/intermediate/intermediate-ca-key.pem \
-        -config=config/ca-config.json \
-        -profile=server certs/alpha-consul/servers/server-csr.json | \
-        cfssljson -bare certs/vault/servers/vagrant-vault-server
-  
   consul-cli-cert:
     cmds:
       - |
@@ -367,6 +157,28 @@ tasks:
         -config=config/ca-config.json \
         -profile=client certs/consul/clients/cli/cli-csr.json | \
         cfssljson -bare certs/consul/clients/cli/vagrant-consul-cli-client
+  
+  vault-cli-client-csr:
+    silent: true
+    cmds:
+      - mkdir -p certs/vault/clients/cli
+      - echo {{.VAULT_CLI_CLIENT_CSR_JSON | catLines}} > certs/vault/clients/cli/cli-csr.json
+
+  vault-app-client-csr:
+    silent: true
+    cmds:
+      - mkdir -p certs/vault/clients/app
+      - echo {{.VAULT_APP_CLIENT_CSR_JSON | catLines}} > certs/vault/clients/app/app-csr.json
+
+  vault-servers-certs:
+    cmds:
+      - |
+        cfssl gencert \
+        -ca=ca/intermediate/intermediate-ca.pem \
+        -ca-key=ca/intermediate/intermediate-ca-key.pem \
+        -config=config/ca-config.json \
+        -profile=server certs/alpha-consul/servers/server-csr.json | \
+        cfssljson -bare certs/vault/servers/vagrant-vault-server
   
   vault-cli-cert:
     cmds:
@@ -378,7 +190,7 @@ tasks:
         -profile=client certs/vault/clients/cli/cli-csr.json | \
         cfssljson -bare certs/vault/clients/cli/vagrant-vault-cli-client
 
-  vault-app-cert:
+  vault-app-client-cert:
     cmds:
       - |
         cfssl gencert \
@@ -424,36 +236,10 @@ tasks:
     silent: true
     cmds:
       - mkdir -p certs/nomad/servers/
-      - |
-        cat << EOF > certs/nomad/servers/global-nomad-csr.json
-        {
-          "CN": "global.nomad",
-          "hosts": [
-              "global.nomad",
-              "alpha.consul",
-              "vagrant-hashi-stack-1.global.nomad",
-              "vagrant-hashi-stack-2.global.nomad",
-              "vagrant-hashi-stack-3.global.nomad",
-              "vagrant-hashi-stack-1.alpha.consul",
-              "vagrant-hashi-stack-2.alpha.consul",
-              "vagrant-hashi-stack-3.alpha.consul",
-              "localhost",
-              "127.0.0.1"
-          ],
-          "key": {
-              "algo": "ecdsa",
-              "size": 256
-          },
-          "names": [{
-              "C": "US",
-              "L": "Minneapolis",
-              "OU": "RNKOAA DevOps",
-              "ST": "MN"
-          }]
-        }
-        EOF
+      - echo {{.NOMAD_SERVERS_CSR_JSON | catLines}} > certs/nomad/servers/global-nomad-csr.json
+
 # 2. Generate Nomad servers certs
-  nomad-servers:
+  nomad-servers-certs:
     cmds:
       - |
         cfssl gencert \
@@ -468,34 +254,8 @@ tasks:
     silent: true
     cmds:
       - mkdir -p certs/nomad/clients/
-      - |
-        cat << EOF > certs/nomad/clients/nomad-client-csr.json
-        {
-          "CN": "global.nomad",
-          "hosts": [
-              "global.nomad",
-              "alpha.consul",
-              "vagrant-hashi-stack-1.global.nomad",
-              "vagrant-hashi-stack-2.global.nomad",
-              "vagrant-hashi-stack-3.global.nomad",
-              "vagrant-hashi-stack-1.alpha.consul",
-              "vagrant-hashi-stack-2.alpha.consul",
-              "vagrant-hashi-stack-3.alpha.consul",
-              "localhost",
-              "127.0.0.1"
-          ],
-          "key": {
-              "algo": "ecdsa",
-              "size": 256
-          },
-          "names": [{
-              "C": "US",
-              "L": "Minneapolis",
-              "OU": "RNKOAA DevOps",
-              "ST": "MN"
-          }]
-        }
-        EOF
+      - echo {{.NOMAD_CLIENT_CSR_JSON | catLines}} > certs/nomad/clients/nomad-client-csr.json
+
 # 4. Use client csr to generate certs
   nomad-client-certs:
     silent: true
@@ -508,4 +268,24 @@ tasks:
         -config=config/ca-config.json \
         -profile=client-server certs/nomad/clients/nomad-client-csr.json | \
         cfssljson -bare certs/nomad/clients/nomad/vagrant-nomad-client
+
+# 3. Generate Nomad clients csr
+  nomad-cli-clients-csr:
+    silent: true
+    cmds:
+      - mkdir -p certs/nomad/clients/cli
+      - echo {{.NOMAD_CLI_CLIENT_CSR_JSON | catLines}} > certs/nomad/clients/cli/nomad-cli-client-csr.json
+
+# 4. Use client csr to generate certs
+  nomad-cli-client-certs:
+    silent: true
+    cmds:
+      - mkdir -p certs/nomad/clients/cli
+      - |
+        cfssl gencert \
+        -ca=ca/intermediate/intermediate-ca.pem \
+        -ca-key=ca/intermediate/intermediate-ca-key.pem \
+        -config=config/ca-config.json \
+        -profile=client certs/nomad/clients/cli/nomad-cli-client-csr.json | \
+        cfssljson -bare certs/nomad/clients/cli/vagrant-nomad-cli-client
 # 5. validate server and client certs
