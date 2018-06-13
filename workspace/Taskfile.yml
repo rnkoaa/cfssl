@@ -33,6 +33,10 @@ tasks:
 
   gen-all-nomad:
     cmds:
+      - rm -rf certs/nomad
+      - mkdir -p certs/nomad/servers
+      - mkdir -p certs/nomad/clients
+      
       - task: nomad-servers-csr
       - task: nomad-clients-csr
       - task: nomad-client-certs
@@ -145,7 +149,7 @@ tasks:
         -ca=ca/intermediate/intermediate-ca.pem \
         -ca-key=ca/intermediate/intermediate-ca-key.pem \
         -config=config/ca-config.json \
-        -profile=server certs/alpha-consul/servers/server-csr.json | \
+        -profile=client-server certs/alpha-consul/servers/server-csr.json | \
         cfssljson -bare certs/consul/servers/vagrant-consul-server
   
   consul-cli-cert:
@@ -236,7 +240,9 @@ tasks:
     silent: true
     cmds:
       - mkdir -p certs/nomad/servers/
-      - echo {{.NOMAD_SERVERS_CSR_JSON | catLines}} > certs/nomad/servers/global-nomad-csr.json
+      - echo {{.VAGRANT_HASHI_STACK_1_NOMAD_SERVER_CSR_JSON | catLines}} > certs/nomad/servers/vagrant-hashi-stack-1-nomad-csr.json
+      - echo {{.VAGRANT_HASHI_STACK_2_NOMAD_SERVER_CSR_JSON | catLines}} > certs/nomad/servers/vagrant-hashi-stack-2-nomad-csr.json
+      - echo {{.VAGRANT_HASHI_STACK_3_NOMAD_SERVER_CSR_JSON | catLines}} > certs/nomad/servers/vagrant-hashi-stack-3-nomad-csr.json
 
 # 2. Generate Nomad servers certs
   nomad-servers-certs:
@@ -246,8 +252,22 @@ tasks:
         -ca=ca/intermediate/intermediate-ca.pem \
         -ca-key=ca/intermediate/intermediate-ca-key.pem \
         -config=config/ca-config.json \
-        -profile=server certs/nomad/servers/global-nomad-csr.json | \
-        cfssljson -bare certs/nomad/servers/vagrant-nomad-server
+        -profile=client-server certs/nomad/servers/vagrant-hashi-stack-1-nomad-csr.json | \
+        cfssljson -bare certs/nomad/servers/vagrant-hashi-stack-1-nomad-server
+      - |
+        cfssl gencert \
+        -ca=ca/intermediate/intermediate-ca.pem \
+        -ca-key=ca/intermediate/intermediate-ca-key.pem \
+        -config=config/ca-config.json \
+        -profile=client-server certs/nomad/servers/vagrant-hashi-stack-2-nomad-csr.json | \
+        cfssljson -bare certs/nomad/servers/vagrant-hashi-stack-2-nomad-server
+      - |
+        cfssl gencert \
+        -ca=ca/intermediate/intermediate-ca.pem \
+        -ca-key=ca/intermediate/intermediate-ca-key.pem \
+        -config=config/ca-config.json \
+        -profile=client-server certs/nomad/servers/vagrant-hashi-stack-3-nomad-csr.json | \
+        cfssljson -bare certs/nomad/servers/vagrant-hashi-stack-3-nomad-server
   
 # 3. Generate Nomad clients csr
   nomad-clients-csr:

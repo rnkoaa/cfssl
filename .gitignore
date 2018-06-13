@@ -1,5 +1,6 @@
 workspace/ca
-workspace/certs
+workspace/certs/**/*.pem
+workspace/certs/**/*.cert
 workspace/config
 .vagrant/
 
