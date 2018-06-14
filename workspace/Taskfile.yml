@@ -50,6 +50,10 @@ tasks:
       - task: vault-cli-cert
       - task: vault-app-client-cert
 
+  gen-nomad-cli-client:
+    cmds:
+      - task: nomad-cli-clients-csr
+      - task: nomad-cli-client-certs
   reset:
     cmds:
       - rm -rf ca config certs
