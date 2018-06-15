@@ -63,7 +63,7 @@ tasks:
     silent: true
     cmds:
       - task: consul-vault-client-csr
-      - task: consul-nomad-client-csr
+      - task: 
       - task: consul-cli-client-csr
       - task: consul-client-csr
 

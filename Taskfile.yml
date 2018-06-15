@@ -7,7 +7,10 @@ tasks:
     cmds:
       # - echo {{.ROOT_CA_CSR_JSON}} > ca/root/ca-csr.json
       - echo {{.ROOT_CA_CSR_JSON}} > ca-csr.json
-
+  build-docker:
+    desc: Build docker image
+    cmds:
+      - docker build -t rnkoaa/cfssl .
   docker-container:
     desc: |
       Run the docker container that can be used to generate certs. This mounts the local workspace dir as a volume
